@@ -1,1 +1,4 @@
-enum PhiloErrors {}
+enum PhiloErrors {
+    ///
+    Dead,
+}

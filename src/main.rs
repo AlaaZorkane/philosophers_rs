@@ -1,13 +1,22 @@
 #![allow(dead_code, unused_variables)]
 pub mod config;
+pub mod fork;
 pub mod logger;
 pub mod philo;
+pub mod utils;
 
-use std::{env, sync::Arc, thread, time::Duration};
+use std::{
+    env,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 
 use crate::{
     config::Config,
-    philo::{Fork, Philo},
+    fork::Fork,
+    logger::{log_state, LogState},
+    philo::Philo,
 };
 
 fn main() {
@@ -35,25 +44,45 @@ fn main() {
 
     println!("Config: {:#?}", config);
 
-    // let mut philo_vec = Vec::<Philo>::new();
     let mut handles = vec![];
-    let forks: Vec<Fork> = vec![0; config.n_philo]
+    let v: i32 = (1..5).collect::<Vec<i32>>().iter().map(|x| x.pow(2)).sum();
+    let forks: Vec<_> = (0..config.n_philo as u32)
         .into_iter()
-        .map(|fork_id| Fork::new(fork_id))
+        .map(|fork_id| Arc::new(Mutex::new(Fork::new(fork_id))))
         .collect();
 
-    for philo_id in 1..(config.n_philo as u32) {
-        let config_clone = Arc::clone(&config);
+    for philo_id in 1..=(config.n_philo as u32) {
+        let config_clone = config.clone();
 
-        let fork = Fork::new(philo_id);
+        // In a circular way (L,R)
+        let fork_l_index = (philo_id - 1) as usize;
+        let fork_r_index = if philo_id == 1 {
+            config.n_philo - 1
+        } else {
+            (philo_id - 2) as usize
+        };
+
+        let (fork_l, fork_r) = (
+            forks.get(fork_l_index).unwrap().clone(),
+            forks.get(fork_r_index).unwrap().clone(),
+        );
+
         let handle = thread::spawn(move || {
-            let philo = Philo::new(philo_id, config_clone);
+            let mut philo = Philo::new(philo_id, config_clone, fork_l, fork_r);
 
             loop {
-                philo.eat();
-                philo.sleep();
-                philo.think();
+                if let Err(_) = philo.eat() {
+                    break;
+                }
+                if let Err(_) = philo.sleep() {
+                    break;
+                }
+                if let Err(_) = philo.think() {
+                    break;
+                }
             }
+
+            log_state(philo_id, LogState::Death);
         });
 
         handles.push(handle);

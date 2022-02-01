@@ -15,13 +15,14 @@ pub fn log_state(philo_id: u32, state: LogState) {
         .unwrap()
         .as_millis();
 
-    print!("[{now}] >> {philo_id} ");
-
+    let mut msg = String::from(format!("[{now}] >> {philo_id} "));
     match state {
-        LogState::Death => println!("died"),
-        LogState::Eating => println!("is eating"),
-        LogState::Sleeping => println!("is sleeping"),
-        LogState::Thinking => println!("is thinking"),
-        LogState::NewFork => println!("has taken a fork"),
-    }
+        LogState::Death => msg.push_str("died :("),
+        LogState::Eating => msg.push_str("is eating"),
+        LogState::Sleeping => msg.push_str("is sleeping"),
+        LogState::Thinking => msg.push_str("is thinking"),
+        LogState::NewFork => msg.push_str("has taken a fork"),
+    };
+
+    println!("{msg}");
 }
